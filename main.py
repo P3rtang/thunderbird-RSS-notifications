@@ -24,7 +24,7 @@ class FeedType(Enum):
     Twitch = 2
 
     def __str__(self) -> str:
-        assert len(FeedType) == 3, "Unhandled Feedtype"
+        assert len(FeedType) == 3, "Unhandled FeedType"
         match self:
             case FeedType.VrtNws:
                 return "VrtNws"
@@ -36,7 +36,7 @@ class FeedType(Enum):
                 assert False, "unreachable!"
 
     def get_path(self) -> str:
-        assert len(FeedType) == 3, "Unhandled Feedtype"
+        assert len(FeedType) == 3, "Unhandled FeedType"
         match self:
             case FeedType.VrtNws:
                 return '/home/p3rtang/.thunderbird/zhwa72u2.default-release/Mail/Feeds-2/feeditems.json'
@@ -49,7 +49,7 @@ class FeedType(Enum):
 
     async def send_notification(self, url: str):
         print(f"creating notification...")
-        assert len(FeedType) == 3, "Unhandled Feedtype"
+        assert len(FeedType) == 3, "Unhandled FeedType"
         match self:
             case FeedType.VrtNws:
                 body: str = await get_title_from_url(url)
@@ -62,12 +62,18 @@ class FeedType(Enum):
                 try:
                     video_id = url.split(':')[2]
                     video_data: dict = await youtube_api_get_video_data(video_id)
-                    video_info: list = video_data.get('items')
+                    video_info: Optional[list] = video_data.get('items')
+                    if video_info is None:
+                        raise LookupError
                     video_author: str = video_info[0].get('snippet').get('channelTitle')
                     video_title: str = video_info[0].get('snippet').get('title')
                     channel_id: str = video_info[0].get('snippet').get('channelId')
-                    thumbnail_url: str = (await youtube_api_get_channel_data(channel_id)) \
-                        .get('items')[0] \
+
+                    channel_data_items: Optional[list] = (await youtube_api_get_channel_data(channel_id)) \
+                        .get('items')
+                    if channel_data_items is None:
+                        raise LookupError
+                    thumbnail_url: str = channel_data_items[0] \
                         .get('snippet') \
                         .get('thumbnails') \
                         .get('medium') \
@@ -78,7 +84,7 @@ class FeedType(Enum):
                     msg = Message(video_author, video_title) \
                         .set_default_cmd(f"{BROWSER} --new-tab {url}") \
                         .set_image(thumbnail)
-                except IndexError as err:
+                except LookupError as err:
                     print(err)
                     msg = Message("Youtube", "new_video")
             case _:
