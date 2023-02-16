@@ -14,16 +14,10 @@ from enum import Enum
 
 
 REL_PATH = Path(__file__).parent.absolute()
-
-
-def get_api_key() -> str:
-    with open(f"{REL_PATH}/apikey.txt") as f:
-        key = f.read()
-        return key
-
-
 DELAY = 5
-GOOGLE_API_KEY = get_api_key()
+with open(f"{REL_PATH}/apikey.txt") as keyfile:
+    GOOGLE_API_KEY = keyfile.read().replace('\n', '')
+print(GOOGLE_API_KEY)
 BROWSER = os.environ['BROWSER']
 
 
@@ -67,24 +61,28 @@ class FeedType(Enum):
                 body = await get_twitch_content(url)
                 msg = Message(f"{self}", body)
             case FeedType.Youtube:
-                video_id = url.split(':')[2]
-                video_data  : dict = await youtube_api_get_video_data(video_id)
-                video_author: str  = video_data.get('items', []).get(0).get('snippet').get('channelTitle')
-                video_title : str  = video_data.get('items', []).get(0).get('snippet').get('title')
-                channel_id  : str  = video_data.get('items', []).get(0).get('snippet').get('channelId')
-                thumbnail_url: str = (await youtube_api_get_channel_data(channel_id))\
-                    .get('items', [])\
-                    .get(0)\
-                    .get('snippet')\
-                    .get('thumbnails')\
-                    .get('medium')\
-                    .get('url')
-                thumbnail: str = await get_thumbnail(thumbnail_url, channel_id)
+                try:
+                    video_id = url.split(':')[2]
+                    video_data: dict = await youtube_api_get_video_data(video_id)
+                    video_info: list = video_data.get('items')
+                    video_author: str = video_info[0].get('snippet').get('channelTitle')
+                    video_title: str = video_info[0].get('snippet').get('title')
+                    channel_id: str = video_info[0].get('snippet').get('channelId')
+                    thumbnail_url: str = (await youtube_api_get_channel_data(channel_id)) \
+                        .get('items')[0] \
+                        .get('snippet') \
+                        .get('thumbnails') \
+                        .get('medium') \
+                        .get('url')
+                    thumbnail: str = await get_thumbnail(thumbnail_url, channel_id)
 
-                url = f"https://www.youtube.com/watch?v={video_id}"
-                msg = Message(video_author, video_title) \
-                    .set_default_cmd(f"{BROWSER} --new-tab {url}") \
-                    .set_image(thumbnail)
+                    url = f"https://www.youtube.com/watch?v={video_id}"
+                    msg = Message(video_author, video_title) \
+                        .set_default_cmd(f"{BROWSER} --new-tab {url}") \
+                        .set_image(thumbnail)
+                except IndexError as err:
+                    print(err)
+                    msg = Message("Youtube", "new_video")
             case _:
                 assert False, "unreachable!"
         print(f"serving notification")
@@ -171,6 +169,7 @@ async def youtube_api_get_video_data(video_id: str) -> dict:
     async with aiohttp.ClientSession() as session:
         api_url = f"https://youtube.googleapis.com/youtube/v3/videos?part=snippet%2CcontentDetails%2Cstatistics&id=" \
                   f"{video_id}&key={GOOGLE_API_KEY}"
+        print(api_url)
         async with session.get(api_url) as response:
             resp_json: dict = await response.json()
             return resp_json
