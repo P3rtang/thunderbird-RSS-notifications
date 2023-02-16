@@ -12,12 +12,9 @@ from datetime import datetime
 from typing import Tuple, Optional
 from enum import Enum
 
-
 REL_PATH = Path(__file__).parent.absolute()
 DELAY = 5
-with open(f"{REL_PATH}/apikey.txt") as keyfile:
-    GOOGLE_API_KEY = keyfile.read().replace('\n', '')
-print(GOOGLE_API_KEY)
+with open(f"{REL_PATH}/apikey.txt") as keyfile: GOOGLE_API_KEY = keyfile.read().strip()
 BROWSER = os.environ['BROWSER']
 
 
@@ -51,6 +48,7 @@ class FeedType(Enum):
                 assert False, "unreachable!"
 
     async def send_notification(self, url: str):
+        print(f"creating notification...")
         assert len(FeedType) == 3, "Unhandled Feedtype"
         match self:
             case FeedType.VrtNws:
@@ -85,7 +83,6 @@ class FeedType(Enum):
                     msg = Message("Youtube", "new_video")
             case _:
                 assert False, "unreachable!"
-        print(f"serving notification")
         await asyncio.create_task(msg.send())
 
     async def read_from_file(self) -> dict:
@@ -148,8 +145,7 @@ async def get_title_from_url(url: str) -> str:
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
             html = await response.text()
-            title = html.split("<title>")[1].split("</title>")[0].replace('\n', '')
-            print(title)
+            title = html.split("<title>")[1].split("</title>")[0].strip()
             return title
 
 
@@ -161,7 +157,6 @@ async def get_twitch_content(url: str) -> str:
                 .split("<span class=\"attribute-name\">content</span>")[1] \
                 .split("</a>")[0] \
                 .removeprefix("=\"<a class=\"attribute-value\">")
-            print(title)
             return title
 
 
@@ -169,7 +164,6 @@ async def youtube_api_get_video_data(video_id: str) -> dict:
     async with aiohttp.ClientSession() as session:
         api_url = f"https://youtube.googleapis.com/youtube/v3/videos?part=snippet%2CcontentDetails%2Cstatistics&id=" \
                   f"{video_id}&key={GOOGLE_API_KEY}"
-        print(api_url)
         async with session.get(api_url) as response:
             resp_json: dict = await response.json()
             return resp_json
