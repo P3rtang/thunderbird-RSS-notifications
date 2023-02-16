@@ -12,10 +12,19 @@ from datetime import datetime
 from typing import Tuple, Optional
 from enum import Enum
 
-DELAY = 5
-GOOGLE_API_KEY = "AIzaSyBKDYT41w7qstabF0YM4eYxOvSijICQPiw"
-BROWSER = os.environ['BROWSER']
+
 REL_PATH = Path(__file__).parent.absolute()
+
+
+def get_api_key() -> str:
+    with open(f"{REL_PATH}/apikey.txt") as f:
+        key = f.read()
+        return key
+
+
+DELAY = 5
+GOOGLE_API_KEY = get_api_key()
+BROWSER = os.environ['BROWSER']
 
 
 class FeedType(Enum):
